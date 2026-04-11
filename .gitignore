@@ -1,25 +1,30 @@
-# Android Studio
-*.iml
-.gradle/
-local.properties
-.idea/
-.DS_Store
-
-# Build output
-build/
+# Android build files
 */build/
+build/
 
-# Android Studio files
-captures/
-.externalNativeBuild/
+# Gradle
+.gradle/
 
-# Keystore files
+# Local config
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Signing
 *.jks
 *.keystore
 
-# Log files
+# Logs
 *.log
 
-# Navigation / editor cache
+# Android Studio specific
+captures/
+.externalNativeBuild/
 .navigation/
 .cxx/
