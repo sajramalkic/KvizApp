@@ -9,7 +9,6 @@ import ba.etfrma.kvizapp.model.Predmet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
 enum class FilterOpcija(val label: String) {
     SVI_MOJI("Svi moji kvizovi"),
     SVI("Svi kvizovi"),
@@ -25,6 +24,9 @@ class KvizViewModel : ViewModel() {
 
     private val _filtrirani = MutableStateFlow<List<Kviz>>(emptyList())
     val filtrirani: StateFlow<List<Kviz>> = _filtrirani.asStateFlow()
+
+    private val _brojKvizova = MutableStateFlow(0)
+    val brojKvizova: StateFlow<Int> = _brojKvizova.asStateFlow()
 
     // Upis state
     private val _odabranaGodina = MutableStateFlow<Int?>(null)
@@ -55,13 +57,15 @@ class KvizViewModel : ViewModel() {
     }
 
     private fun osvjeziListu() {
-        _filtrirani.value = when (_odabraniFilter.value) {
+        val lista = when (_odabraniFilter.value) {
             FilterOpcija.SVI_MOJI -> KvizStaticData.getUpisani()
             FilterOpcija.SVI -> KvizStaticData.getAll()
             FilterOpcija.URADENI -> KvizStaticData.getDone()
             FilterOpcija.BUDUCI -> KvizStaticData.getFuture()
             FilterOpcija.PROSLI_NEURADENI -> KvizStaticData.getNotTaken()
         }
+        _filtrirani.value = lista
+        _brojKvizova.value = lista.size
     }
 
     fun setGodina(godina: Int) {
@@ -87,13 +91,11 @@ class KvizViewModel : ViewModel() {
         val predmet = _odabraniPredmet.value ?: return
         PredmetStaticData.upisise(predmet)
         _upisUspjesan.value = true
-        // Resetuj formu
         _odabraniPredmet.value = null
         _odabranaGrupa.value = null
         _predmetiZaGodinu.value = PredmetStaticData.getNeupisani()
             .filter { it.godina == _odabranaGodina.value }
         _grupeZaPredmet.value = emptyList()
-        // Osvježi listu kvizova
         osvjeziListu()
     }
 

@@ -147,17 +147,21 @@ object KvizStaticData {
     }
 
     fun getDone(): List<Kviz> {
-        return getUpisani().filter { it.datumRada != null }
+        return getUpisani()
+            .filter { it.datumRada != null }
+            .sortedBy { it.datumPocetak }
     }
 
     fun getFuture(): List<Kviz> {
-        return getUpisani().filter { it.datumPocetak.isAfter(referentnoVrijeme) }
+        return getUpisani()
+            .filter { it.datumPocetak.isAfter(referentnoVrijeme) }
+            .sortedBy { it.datumPocetak }
     }
 
     fun getNotTaken(): List<Kviz> {
-        return getUpisani().filter {
-            it.datumKraj.isBefore(referentnoVrijeme) && it.datumRada == null
-        }
+        return getUpisani()
+            .filter { it.datumKraj.isBefore(referentnoVrijeme) && it.datumRada == null }
+            .sortedBy { it.datumPocetak }
     }
-
 }
+
