@@ -1,11 +1,12 @@
-package ba.etf.rma26.projekat.data.repositories
+package ba.etf.rma26.projekat.network
 
+import ba.etf.rma26.projekat.util.Constants
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import ba.etf.rma26.projekat.network.ApiService
+
 object ApiConfig {
 
-    private var baseUrl: String = "http://10.0.2.2:3000/"
+    private var baseUrl: String = Constants.DEFAULT_BASE_URL
     private var apiKey: String? = null
     private var retrofit: Retrofit? = null
     private var service: ApiService? = null

@@ -7,47 +7,41 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ba.etf.rma26.projekat.data.models.Kviz
 import ba.etf.rma26.projekat.data.models.KvizTaken
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import ba.etf.rma26.projekat.util.Constants
+import ba.etf.rma26.projekat.util.DateUtil
+import ba.etf.rma26.projekat.util.preostaloVrijeme
 
 @Composable
 fun KvizItem(
     kviz: Kviz,
     kvizTaken: KvizTaken? = null,
+    jeUradjen: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-    val referentno = LocalDateTime.of(2021, 4, 10, 12, 0)
-    val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-    val isoFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+    val referentno = Constants.REFERENTNO_VRIJEME
+    val formatter = DateUtil.prikazFormatter
 
-    fun parseDate(str: String): LocalDateTime = try {
-        LocalDateTime.parse(str.replace("Z", "").take(19), isoFormatter)
-    } catch (e: Exception) {
-        referentno
-    }
+    val pocetak = DateUtil.parse(kviz.datumPocetak)
+    val kraj = DateUtil.parse(kviz.datumKraj)
+    val datumRada = kvizTaken?.datumRada?.let { DateUtil.parse(it) }
 
-    val pocetak = parseDate(kviz.datumPocetak)
-    val kraj = parseDate(kviz.datumKraj)
-    val datumRada = kvizTaken?.datumRada?.let {
-        try { parseDate(it) } catch (e: Exception) { null }
-    }
+    val jeAktivan = referentno.isAfter(pocetak) && referentno.isBefore(kraj) && !jeUradjen
 
     val (statusBoja, statusOpis, prikazaniDatum) = when {
-        datumRada != null ->
-            Triple(Color(0xFF2196F3), "Plava", datumRada.format(formatter))
-        referentno.isAfter(pocetak) && referentno.isBefore(kraj) ->
-            Triple(Color(0xFF4CAF50), "Zelena", kraj.format(formatter))
+        jeUradjen ->
+            Triple(Constants.BOJA_PLAVA, "Plava", datumRada?.format(formatter) ?: "")
+        jeAktivan ->
+            Triple(Constants.BOJA_ZELENA, "Zelena", kraj.format(formatter))
         pocetak.isAfter(referentno) ->
-            Triple(Color(0xFFFFEB3B), "Žuta", pocetak.format(formatter))
+            Triple(Constants.BOJA_ZUTA, "Žuta", pocetak.format(formatter))
         else ->
-            Triple(Color(0xFFF44336), "Crvena", kraj.format(formatter))
+            Triple(Constants.BOJA_CRVENA, "Crvena", kraj.format(formatter))
     }
 
     Card(
@@ -74,9 +68,7 @@ fun KvizItem(
                         .size(16.dp)
                         .align(Alignment.TopEnd)
                         .testTag("kviz_status_icon")
-                        .semantics {
-                            contentDescription = statusOpis
-                        },
+                        .semantics { contentDescription = statusOpis },
                     colors = CardDefaults.cardColors(containerColor = statusBoja),
                     shape = CircleShape
                 ) {}
@@ -91,14 +83,17 @@ fun KvizItem(
                 )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = kviz.naziv,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = prikazaniDatum,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = kviz.naziv, style = MaterialTheme.typography.bodyLarge)
+                    Text(text = prikazaniDatum, style = MaterialTheme.typography.bodyMedium)
+
+                    if (jeAktivan) {
+                        Text(
+                            text = preostaloVrijeme(kraj, referentno),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -107,6 +102,13 @@ fun KvizItem(
                             text = "${kviz.trajanje} min",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (jeUradjen) {
+                            Text(
+                                text = "${kvizTaken?.osvojenBodovi ?: 0} bodova",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }

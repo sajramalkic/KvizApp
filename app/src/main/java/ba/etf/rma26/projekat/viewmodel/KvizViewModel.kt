@@ -4,19 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ba.etf.rma26.projekat.data.models.Grupa
 import ba.etf.rma26.projekat.data.models.Kviz
+import ba.etf.rma26.projekat.data.models.KvizTaken
 import ba.etf.rma26.projekat.data.models.Predmet
-import ba.etf.rma26.projekat.data.repositories.AccountRepository
-import ba.etf.rma26.projekat.data.repositories.KvizRepository
-import ba.etf.rma26.projekat.data.repositories.PredmetIGrupaRepository
-import ba.etf.rma26.projekat.data.repositories.TakeKvizRepository
+import ba.etf.rma26.projekat.data.repositories.*
+import ba.etf.rma26.projekat.domain.FiltrirajKvizoveUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.collectLatest
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.io.IOException
 
 enum class FilterOpcija(val label: String) {
     SVI_MOJI("Svi moji kvizovi"),
@@ -28,11 +24,20 @@ enum class FilterOpcija(val label: String) {
 
 class KvizViewModel : ViewModel() {
 
+    private val filtrirajKvizoveUseCase = FiltrirajKvizoveUseCase()
+
     private val _odabraniFilter = MutableStateFlow(FilterOpcija.SVI_MOJI)
     val odabraniFilter: StateFlow<FilterOpcija> = _odabraniFilter.asStateFlow()
 
     private val _filtrirani = MutableStateFlow<List<Kviz>>(emptyList())
     val filtrirani: StateFlow<List<Kviz>> = _filtrirani.asStateFlow()
+
+    private val _pocetiKvizovi = MutableStateFlow<List<KvizTaken>>(emptyList())
+    val pocetiKvizovi: StateFlow<List<KvizTaken>> = _pocetiKvizovi.asStateFlow()
+
+    private val _uradeniKvizIds = MutableStateFlow<Set<Int>>(emptySet())
+    val uradeniKvizIds: StateFlow<Set<Int>> = _uradeniKvizIds.asStateFlow()
+
 
     private val _brojKvizova = MutableStateFlow(0)
     val brojKvizova: StateFlow<Int> = _brojKvizova.asStateFlow()
@@ -68,23 +73,46 @@ class KvizViewModel : ViewModel() {
     private val _upisUspjesan = MutableStateFlow(false)
     val upisUspjesan: StateFlow<Boolean> = _upisUspjesan.asStateFlow()
 
+    private val _upisanNaziv = MutableStateFlow<String?>(null)
+    val upisanNaziv: StateFlow<String?> = _upisanNaziv.asStateFlow()
+
     init {
+        ucitajPocetnepodatke()
+    }
+
+    private fun ucitajPocetnepodatke() {
         viewModelScope.launch {
-            AccountRepository.hash.collectLatest { hash ->
-                ucitajPocetnepodatkeZaHash()
+            _isLoading.value = true
+            _greska.value = null
+            try {
+                _sviPredmeti.value = PredmetIGrupaRepository.getPredmeti()
+                _upisaneGrupe.value = PredmetIGrupaRepository.getUpisaneGrupe()
+                osvjeziListu()
+            } catch (e: IOException) {
+                _greska.value = "Nema internet konekcije. Provjerite da je backend pokrenut."
+            } catch (e: Exception) {
+                _greska.value = "Greška servera. Pokušajte ponovo."
+            } finally {
+                _isLoading.value = false
             }
         }
     }
-    private suspend fun ucitajPocetnepodatkeZaHash() {
-        _isLoading.value = true
-        try {
-            _sviPredmeti.value = PredmetIGrupaRepository.getPredmeti()
-            _upisaneGrupe.value = PredmetIGrupaRepository.getUpisaneGrupe()
-            osvjeziListu()
-        } catch (e: Exception) {
-            _greska.value = "Greška pri učitavanju podataka"
-        } finally {
-            _isLoading.value = false
+
+    fun osvjeziPodatke() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _greska.value = null
+            try {
+                _sviPredmeti.value = PredmetIGrupaRepository.getPredmeti()
+                _upisaneGrupe.value = PredmetIGrupaRepository.getUpisaneGrupe()
+                osvjeziListu()
+            } catch (e: IOException) {
+                _greska.value = "Nema internet konekcije. Provjerite da je backend pokrenut."
+            } catch (e: Exception) {
+                _greska.value = "Greška servera. Pokušajte ponovo."
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
@@ -94,47 +122,24 @@ class KvizViewModel : ViewModel() {
     }
 
     private suspend fun osvjeziListu() {
-        val referentno = LocalDateTime.of(2021, 4, 10, 12, 0)
-        val lista = when (_odabraniFilter.value) {
-            FilterOpcija.SVI_MOJI -> KvizRepository.getUpisani()
-            FilterOpcija.SVI -> KvizRepository.getAll()
-            FilterOpcija.URADENI -> {
-                val pocetiKvizovi = TakeKvizRepository.getPocetiKvizovi() ?: emptyList()
-                val uradeniIds = pocetiKvizovi.map { it.idKviza }.toSet()
-                KvizRepository.getUpisani().filter { it.id in uradeniIds }
-            }
-            FilterOpcija.BUDUCI -> {
-                KvizRepository.getUpisani().filter {
-                    val datum = LocalDateTime.parse(
-                        it.datumPocetak.replace("Z", ""),
-                        DateTimeFormatter.ISO_LOCAL_DATE_TIME
-                    )
-                    datum.isAfter(referentno)
-                }
-            }
-            FilterOpcija.PROSLI_NEURADENI -> {
-                val pocetiKvizovi = TakeKvizRepository.getPocetiKvizovi() ?: emptyList()
-                val uradeniIds = pocetiKvizovi.map { it.idKviza }.toSet()
-                KvizRepository.getUpisani().filter {
-                    val datum = LocalDateTime.parse(
-                        it.datumKraj.replace("Z", ""),
-                        DateTimeFormatter.ISO_LOCAL_DATE_TIME
-                    )
-                    datum.isBefore(referentno) && it.id !in uradeniIds
-                }
-            }
-        }.sortedBy { it.datumPocetak }
-        _filtrirani.value = lista
-        _brojKvizova.value = lista.size
+        try {
+            val rezultat = filtrirajKvizoveUseCase(_odabraniFilter.value)
+            _pocetiKvizovi.value = rezultat.pocetiKvizovi
+            _uradeniKvizIds.value = rezultat.uradeniKvizIds
+            _filtrirani.value = rezultat.kvizovi
+            _brojKvizova.value = rezultat.kvizovi.size
+        } catch (e: IOException) {
+            _greska.value = "Nema internet konekcije."
+        } catch (e: Exception) {
+            _greska.value = "Greška pri učitavanju kvizova."
+        }
     }
 
     fun setGodina(godina: Int) {
         _odabranaGodina.value = godina
         _odabraniPredmet.value = null
         _odabranaGrupa.value = null
-        val upisaniPredmetiIds = _upisaneGrupe.value.map { it.idPredmeta }.toSet()
-        _predmetiZaGodinu.value = _sviPredmeti.value
-            .filter { it.godina == godina && it.id !in upisaniPredmetiIds }
+        _predmetiZaGodinu.value = _sviPredmeti.value.filter { it.godina == godina }
         _grupeZaPredmet.value = emptyList()
         azurirajDugme()
     }
@@ -143,7 +148,15 @@ class KvizViewModel : ViewModel() {
         _odabraniPredmet.value = predmet
         _odabranaGrupa.value = null
         viewModelScope.launch {
-            _grupeZaPredmet.value = PredmetIGrupaRepository.getGrupeZaPredmet(predmet.id)
+            try {
+                val sveGrupeZaPredmet = PredmetIGrupaRepository.getGrupeZaPredmet(predmet.id)
+                val upisaniGrupaIds = _upisaneGrupe.value.map { it.id }.toSet()
+                _grupeZaPredmet.value = sveGrupeZaPredmet.filter { it.id !in upisaniGrupaIds }
+            } catch (e: IOException) {
+                _greska.value = "Nema internet konekcije."
+            } catch (e: Exception) {
+                _greska.value = "Greška servera."
+            }
         }
         azurirajDugme()
     }
@@ -155,24 +168,37 @@ class KvizViewModel : ViewModel() {
 
     fun upisise() {
         val grupa = _odabranaGrupa.value ?: return
+        val predmet = _odabraniPredmet.value ?: return
         viewModelScope.launch {
             _isLoading.value = true
-            val uspjelo = PredmetIGrupaRepository.upisiUGrupu(grupa.id)
-            if (uspjelo) {
-                _upisUspjesan.value = true
-                _upisaneGrupe.value = PredmetIGrupaRepository.getUpisaneGrupe()
-                _odabraniPredmet.value = null
-                _odabranaGrupa.value = null
-                _odabranaGodina.value?.let { setGodina(it) }
-                osvjeziListu()
-            } else {
-                _greska.value = "Upis nije uspio"
+            _greska.value = null
+            try {
+                val uspjelo = PredmetIGrupaRepository.upisiUGrupu(grupa.id)
+                if (uspjelo) {
+                    _upisUspjesan.value = true
+                    _upisanNaziv.value = "${predmet.naziv} - ${grupa.naziv}"
+                    _upisaneGrupe.value = PredmetIGrupaRepository.getUpisaneGrupe()
+                    _odabraniPredmet.value = null
+                    _odabranaGrupa.value = null
+                    _odabranaGodina.value?.let { setGodina(it) }
+                    osvjeziListu()
+                } else {
+                    _greska.value = "Upis nije uspio. Grupa možda ne postoji."
+                }
+            } catch (e: IOException) {
+                _greska.value = "Nema internet konekcije."
+            } catch (e: Exception) {
+                _greska.value = "Greška pri upisu."
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
-    fun resetUpisUspjesan() { _upisUspjesan.value = false }
+    fun resetUpisUspjesan() {
+        _upisUspjesan.value = false
+        _upisanNaziv.value = null
+    }
     fun resetGreska() { _greska.value = null }
 
     private fun azurirajDugme() {

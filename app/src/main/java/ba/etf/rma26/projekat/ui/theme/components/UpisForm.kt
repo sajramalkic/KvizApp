@@ -20,7 +20,7 @@ fun UpisForm(
     odabranaGrupa: Grupa?,
     predmetiZaGodinu: List<Predmet>,
     grupeZaPredmet: List<Grupa>,
-    dugmeEnabled: StateFlow<Boolean>,
+    dugmeEnabled: Boolean,
     onGodinaOdabrana: (Int) -> Unit,
     onPredmetOdabran: (Predmet) -> Unit,
     onGrupaOdabrana: (Grupa) -> Unit,
@@ -31,8 +31,6 @@ fun UpisForm(
     LaunchedEffect(odabranaGodina) {
         if (odabranaGodina != null) posljednjaGodina = odabranaGodina
     }
-
-    val enabled by dugmeEnabled.collectAsState()
 
     Column(
         modifier = Modifier
@@ -81,7 +79,6 @@ fun UpisForm(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-
         var predmetProsiren by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(
             expanded = predmetProsiren,
@@ -128,7 +125,6 @@ fun UpisForm(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 3. Odabir grupe
         var grupaProsirena by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(
             expanded = grupaProsirena,
@@ -170,7 +166,7 @@ fun UpisForm(
 
         Button(
             onClick = onUpis,
-            enabled = enabled,
+            enabled = dugmeEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("dodajPredmetDugme")

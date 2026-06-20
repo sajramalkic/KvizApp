@@ -15,95 +15,86 @@ import ba.etf.rma26.projekat.viewmodel.KvizViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterScreen(
-    kvizViewModel: KvizViewModel,
-    onPrikaziKvizove: () -> Unit
+    kvizViewModel: KvizViewModel
 ) {
-    val odabraniFilter by kvizViewModel.odabraniFilter.collectAsState()
     val odabranaGodina by kvizViewModel.odabranaGodina.collectAsState()
     val odabraniPredmet by kvizViewModel.odabraniPredmet.collectAsState()
     val odabranaGrupa by kvizViewModel.odabranaGrupa.collectAsState()
     val predmetiZaGodinu by kvizViewModel.predmetiZaGodinu.collectAsState()
     val grupeZaPredmet by kvizViewModel.grupeZaPredmet.collectAsState()
-    val brojKvizova by kvizViewModel.brojKvizova.collectAsState()
     val upisUspjesan by kvizViewModel.upisUspjesan.collectAsState()
+    val upisanNaziv by kvizViewModel.upisanNaziv.collectAsState()
+    val dugmeEnabled by kvizViewModel.dugmeEnabled.collectAsState()
+    val isLoading by kvizViewModel.isLoading.collectAsState()
+    val greska by kvizViewModel.greska.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(upisUspjesan) {
         if (upisUspjesan) {
-            snackbarHostState.showSnackbar("Uspješno ste se upisali na predmet!")
+            val poruka = if (upisanNaziv != null)
+                "Uspješno ste upisani na $upisanNaziv"
+            else
+                "Uspješno ste se upisali na predmet!"
+            snackbarHostState.showSnackbar(poruka)
             kvizViewModel.resetUpisUspjesan()
+        }
+    }
+
+    LaunchedEffect(greska) {
+        greska?.let {
+            snackbarHostState.showSnackbar(it)
+            kvizViewModel.resetGreska()
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(title = { Text("Postavke") })
-        }
+
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(8.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Sekcija za upis
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            // Upis kartica
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                UpisForm(
-                    odabranaGodina = odabranaGodina,
-                    odabraniPredmet = odabraniPredmet,
-                    odabranaGrupa = odabranaGrupa,
-                    predmetiZaGodinu = predmetiZaGodinu,
-                    grupeZaPredmet = grupeZaPredmet,
-                    dugmeEnabled = kvizViewModel.dugmeEnabled,
-                    onGodinaOdabrana = { kvizViewModel.setGodina(it) },
-                    onPredmetOdabran = { kvizViewModel.setPredmet(it) },
-                    onGrupaOdabrana = { kvizViewModel.setGrupa(it) },
-                    onUpis = { kvizViewModel.upisise() }
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Sekcija za filter
-            Text(
-                text = "Filteri",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            FilterDropdown(
-                odabranaOpcija = odabraniFilter,
-                onOdabir = { kvizViewModel.setFilter(it) }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Broj kvizova
-            Text(
-                text = "Pronađeno je $brojKvizova kvizova",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .testTag("brojKvizova")
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Dugme za navigaciju
-            Button(
-                onClick = onPrikaziKvizove,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
-                    .testTag("prikaziKvizoveDugme")
             ) {
-                Text("Prikaži kvizove")
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Upis na predmet",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    UpisForm(
+                        odabranaGodina = odabranaGodina,
+                        odabraniPredmet = odabraniPredmet,
+                        odabranaGrupa = odabranaGrupa,
+                        predmetiZaGodinu = predmetiZaGodinu,
+                        grupeZaPredmet = grupeZaPredmet,
+                        dugmeEnabled = dugmeEnabled,
+                        onGodinaOdabrana = { kvizViewModel.setGodina(it) },
+                        onPredmetOdabran = { kvizViewModel.setPredmet(it) },
+                        onGrupaOdabrana = { kvizViewModel.setGrupa(it) },
+                        onUpis = { kvizViewModel.upisise() }
+                    )
+                }
             }
+
+
         }
     }
 }
