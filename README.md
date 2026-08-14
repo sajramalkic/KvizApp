@@ -67,20 +67,17 @@ Several implementation decisions focus on predictable behaviour and maintainabil
 * Internet connection for communication with the faculty service
 * A valid account hash
 
-### Setup
+<p align="center">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005448.png" width="30%" alt="KvizApp ekran 1">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005512.png" width="30%" alt="KvizApp ekran 2">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005538.png" width="30%" alt="KvizApp ekran 3">
+</p>
 
-1. Clone the repository:
-
-```bash
-git clone https://bitbucket.org/smalkic1/rma26p20120.git
-```
-
-2. Open the project in Android Studio.
-3. Allow Gradle to synchronize the project and download the required dependencies.
-4. Select an emulator or a connected Android device.
-5. Run the application and enter a valid account hash on the login screen.
-
-The backend address and other shared configuration values are kept in the project’s utility configuration. Verify them before running the application in a different environment.
+<p align="center">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005550.png" width="30%" alt="KvizApp ekran 4">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005636.png" width="30%" alt="KvizApp ekran 5">
+  <img src="docs/Snimka%20zaslona%202026-08-15%20005653.png" width="30%" alt="KvizApp ekran 6">
+</p>
 
 ## Author
 
